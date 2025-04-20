@@ -103,10 +103,16 @@ pub fn build(b: *std.Build) void {
     exe.linkSystemLibrary("glfw3");
     // vulkan
     exe.linkSystemLibrary("vulkan-1");
-    exe.linkLibC();
+    exe.linkLibCpp();
 
-    const zlm = b.dependency("zlm", .{}).module("zlm");
+    const zig_glm = b.dependency("zig_glm", .{});
+    const zlm = b.addModule("zlm", .{
+        .root_source_file = zig_glm.path("src/ziglm.zig"),
+    });
     exe.root_module.addImport("zlm", zlm);
+
+    const zmath = b.dependency("zmath", .{}).module("root");
+    exe.root_module.addImport("zmath", zmath);
 
     b.installArtifact(exe);
     const httpzRun = b.addRunArtifact(exe);

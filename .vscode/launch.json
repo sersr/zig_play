@@ -4,18 +4,18 @@
   // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
-
     {
 			"name": "debug",
 			"type": "cppvsdbg",
 			"request": "launch",
 			"program": "${workspaceFolder}\\zig-out\\bin\\main.exe",
+			"preLaunchTask": "build",
 			"args": [],
 			"stopAtEntry": false,
-			"cwd": "${workspaceFolder}\\zig-out\\bin",
+			"cwd": "${workspaceFolder}",
 			"symbolSearchPath": "${workspaceFolder}\\zig-out\\bin",
 			"environment": [],
-			"externalConsole": false,
+			"console": "internalConsole",
 			"logging": {
 				"moduleLoad": false
 			}

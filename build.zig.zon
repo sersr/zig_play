@@ -57,6 +57,15 @@
             .url = "git+https://github.com/ziglibs/zlm#35b76fae19f9d0a1ed541db621d7c4b3e266087e",
             .hash = "zlm-0.1.0-AAAAAPGfAAA0KsMzll3pFfdKhCXkhI_-RoUtoOR4kQP5",
         },
+        .zmath = .{
+            .url = "git+https://github.com/zig-gamedev/zmath#ccf7297ef6c01e21b2d51ad81b5b6ce929e86a00",
+            .hash = "zmath-0.11.0-dev-wjwivZY1AwDO7yxNmZ5HWoU03f9mFBet8LN9-oYc3i29",
+        },
+        .zig_glm = .{
+            .path = "../ziglm",
+            // .url = "git+https://github.com/karlobratko/ziglm#32c8b82c915441d5214764bc00e8f442a111c955",
+            // .hash = "N-V-__8AAFKpAwBTd3y5Sdp-OYX0KTKLYUKKrov4sijpbKv8",
+        },
     },
     .paths = .{
         "build.zig",
