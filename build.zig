@@ -18,6 +18,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const exeOption = b.option([]const u8, "exe", "");
+    const sub = b.option(bool, "sub", "subsystem");
 
     if (exeOption) |e| {
         const arr: []const u8 = "array";
@@ -57,28 +58,19 @@ pub fn build(b: *std.Build) void {
     const zglfw = b.dependency("zglfw", .{});
     exe.root_module.addImport("zglfw", zglfw.module("glfw"));
 
-    // if (target.result.os.tag != .emscripten) {
-    //     exe.linkLibrary(zglfw.artifact("glfw"));
-    // }
-
-    // exe.subsystem = .Windows;
+    if (sub) |s| {
+        if (s) {
+            exe.subsystem = .Windows;
+        }
+    }
 
     // Get the (lazy) path to vk.xml:
     const registry = b.dependency("vulkan_headers", .{}).path("registry/vk.xml");
-    // Get generator executable reference
-    // const vk_gen = b.dependency("vulkan", .{}).artifact("vulkan-zig-generator");
-    // // Set up a run step to generate the bindings
-    // const vk_generate_cmd = b.addRunArtifact(vk_gen);
-    // // Pass the registry to the generator
-    // vk_generate_cmd.addFileArg(registry);
-    // // Create a module from the generator's output...
-    // const vulkan_zig = b.addModule("vulkan", .{
-    //     .root_source_file = vk_generate_cmd.addOutputFileArg("vk.zig"),
-    // });
+
     const vulkan_zig = b.dependency("vulkan", .{
         .registry = registry,
     }).module("vulkan-zig");
-    // ... and pass it as a module to your executable's build command
+
     exe.root_module.addImport("vulkan", vulkan_zig);
 
     const sdk = std.process.getEnvVarOwned(b.allocator, "VULKAN_SDK") catch {
@@ -132,6 +124,7 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(exe);
     const run = b.addRunArtifact(exe);
+
     run.step.dependOn(b.getInstallStep());
 
     if (b.args) |args| {
