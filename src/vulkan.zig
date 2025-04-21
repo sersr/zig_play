@@ -113,6 +113,20 @@ pub fn deinit(self: Self) void {
     self.device_instance.destroyPipelineLayout(self.pipelineLayout, null);
     self.device_instance.destroyRenderPass(self.renderPass, null);
 
+    for (self.uniformBuffers.items, self.uniformBufferMemory.items) |buffer, memory| {
+        self.device_instance.destroyBuffer(buffer, null);
+        self.device_instance.freeMemory(memory, null);
+    }
+
+    defer {
+        self.uniformBufferMapped.deinit();
+        self.uniformBuffers.deinit();
+        self.uniformBufferMemory.deinit();
+    }
+
+    self.device_instance.destroyDescriptorPool(self.descriptorPool, null);
+    self.device_instance.destroyDescriptorSetLayout(self.descriptorSetLayout, null);
+
     self.device_instance.destroyBuffer(self.indexBuffer, null);
     self.device_instance.freeMemory(self.indexBufferMemory, null);
 
