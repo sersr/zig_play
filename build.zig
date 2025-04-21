@@ -81,7 +81,10 @@ pub fn build(b: *std.Build) void {
     // ... and pass it as a module to your executable's build command
     exe.root_module.addImport("vulkan", vulkan_zig);
 
-    const sdk = std.process.getEnvVarOwned(b.allocator, "VULKAN_SDK") catch return;
+    const sdk = std.process.getEnvVarOwned(b.allocator, "VULKAN_SDK") catch {
+        std.log.err("can not find env:VULKAN_SDK.", .{});
+        return;
+    };
     const vulkan_sdk_path = std.fmt.allocPrint(b.allocator, "{s}{s}include", .{ sdk, std.fs.path.sep_str }) catch return;
 
     const vulkan_sdk_lib_path = std.fmt.allocPrint(b.allocator, "{s}{s}Lib", .{ sdk, std.fs.path.sep_str }) catch return;
@@ -106,10 +109,10 @@ pub fn build(b: *std.Build) void {
             };
 
             const glfw_lib_root = glfw_lib.path(lib_path);
-            // const glfw_lib_path = glfw_lib_root.path(b, "glfw3.dyb");
+            const glfw_lib_path = glfw_lib_root.path(b, "libglfw.3.dylib");
 
-            // const file = b.addInstallFileWithDir(glfw_lib_path, .bin, "glfw3.dll");
-            // b.getInstallStep().dependOn(&file.step);
+            const file = b.addInstallFileWithDir(glfw_lib_path, .bin, "libglfw.3.dylib");
+            b.getInstallStep().dependOn(&file.step);
             exe.addLibraryPath(glfw_lib_root);
         },
         else => {},
