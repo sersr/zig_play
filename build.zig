@@ -5,16 +5,7 @@ const builtin = @import("builtin");
 // declaratively construct a build graph that will be executed by an external
 // runner.
 pub fn build(b: *std.Build) void {
-    std.debug.print("build start ...\n", .{});
-    // Standard target options allows the person running `zig build` to choose
-    // what target to build for. Here we do not override the defaults, which
-    // means any target is allowed, and the default is native. Other options
-    // for restricting supported target set are available.
     const target = b.standardTargetOptions(.{});
-
-    // Standard optimization options allow the person running `zig build` to select
-    // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
-    // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
     const exeOption = b.option([]const u8, "exe", "");
@@ -65,22 +56,14 @@ pub fn build(b: *std.Build) void {
     }
 
     // Get the (lazy) path to vk.xml:
-    const registry = b.dependency("vulkan_headers", .{}).path("registry/vk.xml");
+    const vulkan_header = b.dependency("vulkan_headers", .{});
+    const registry = vulkan_header.path("registry/vk.xml");
 
     const vulkan_zig = b.dependency("vulkan", .{
         .registry = registry,
     }).module("vulkan-zig");
 
     exe.root_module.addImport("vulkan", vulkan_zig);
-
-    const sdk = std.process.getEnvVarOwned(b.allocator, "VULKAN_SDK") catch {
-        std.log.err("can not find env:VULKAN_SDK.", .{});
-        return;
-    };
-    const vulkan_sdk_path = std.fmt.allocPrint(b.allocator, "{s}{s}include", .{ sdk, std.fs.path.sep_str }) catch return;
-
-    const vulkan_sdk_lib_path = std.fmt.allocPrint(b.allocator, "{s}{s}Lib", .{ sdk, std.fs.path.sep_str }) catch return;
-    std.log.info("vukan sdk path: {s}", .{vulkan_sdk_path});
 
     switch (builtin.target.os.tag) {
         .windows => {
@@ -110,13 +93,7 @@ pub fn build(b: *std.Build) void {
         else => {},
     }
 
-    // exe.addLibraryPath(.{ .cwd_relative = "C:\\Users\\aote\\scoop\\apps\\glfw\\current\\lib-static-ucrt" });
-    exe.addLibraryPath(.{ .cwd_relative = vulkan_sdk_lib_path });
-    exe.addIncludePath(.{ .cwd_relative = vulkan_sdk_path });
     exe.linkSystemLibrary("glfw3");
-    // vulkan
-    // exe.linkSystemLibrary("vulkan-1");
-
     exe.linkLibC();
 
     const zmath = b.dependency("zmath", .{}).module("root");
