@@ -36,11 +36,6 @@
     // Once all dependencies are fetched, `zig build` no longer requires
     // internet connectivity.
     .dependencies = .{
-        .httpz = .{
-            .path = "./packages/http.zig",
-            // .url = "git+https://github.com/karlseguin/http.zig#56258131ef4505543fef5484451867c13c5ff322",
-            // .hash = "httpz-0.0.0-PNVzrJSuBgDFvO7mtd2qDzaq8_hXIu1BqFuL1jwAV8Ac",
-        },
         .zglfw = .{
             .url = "git+https://github.com/IridescenceTech/zglfw#944759956d5f7e5e13f83bc640857fe718443d25",
             .hash = "zglfw-0.1.0-AAAAAA7SAAD4Y1QNLCrouDRewz3xRuyyrOd3AsLUwjLY",
@@ -72,11 +67,6 @@
         .zmath = .{
             .url = "git+https://github.com/zig-gamedev/zmath#ccf7297ef6c01e21b2d51ad81b5b6ce929e86a00",
             .hash = "zmath-0.11.0-dev-wjwivZY1AwDO7yxNmZ5HWoU03f9mFBet8LN9-oYc3i29",
-        },
-        .zig_glm = .{
-            .path = "../ziglm",
-            // .url = "git+https://github.com/karlobratko/ziglm#32c8b82c915441d5214764bc00e8f442a111c955",
-            // .hash = "N-V-__8AAFKpAwBTd3y5Sdp-OYX0KTKLYUKKrov4sijpbKv8",
         },
     },
     .paths = .{

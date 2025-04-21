@@ -2,7 +2,6 @@ const std = @import("std");
 const builtin = @import("builtin");
 const glfw = @import("zglfw");
 const vk = @import("vulkan");
-const zlm = @import("zlm");
 const zmath = @import("zmath");
 
 pub extern fn glfwGetInstanceProcAddress(instance: vk.Instance, procname: [*:0]const u8) vk.PfnVoidFunction;

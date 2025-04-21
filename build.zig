@@ -54,19 +54,12 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    const httpz = b.dependency("httpz", .{
-        .target = target,
-        .optimize = optimize,
-    });
-
     const zglfw = b.dependency("zglfw", .{});
     exe.root_module.addImport("zglfw", zglfw.module("glfw"));
 
     // if (target.result.os.tag != .emscripten) {
     //     exe.linkLibrary(zglfw.artifact("glfw"));
     // }
-
-    exe.root_module.addImport("httpz", httpz.module("httpz"));
 
     // exe.subsystem = .Windows;
 
@@ -131,22 +124,16 @@ pub fn build(b: *std.Build) void {
 
     exe.linkLibC();
 
-    const zig_glm = b.dependency("zig_glm", .{});
-    const zlm = b.addModule("zlm", .{
-        .root_source_file = zig_glm.path("src/ziglm.zig"),
-    });
-    exe.root_module.addImport("zlm", zlm);
-
     const zmath = b.dependency("zmath", .{}).module("root");
     exe.root_module.addImport("zmath", zmath);
 
     b.installArtifact(exe);
-    const httpzRun = b.addRunArtifact(exe);
-    httpzRun.step.dependOn(b.getInstallStep());
+    const run = b.addRunArtifact(exe);
+    run.step.dependOn(b.getInstallStep());
 
     if (b.args) |args| {
-        httpzRun.addArgs(args);
+        run.addArgs(args);
     }
-    const httpz_run_step = b.step("run", "");
-    httpz_run_step.dependOn(&httpzRun.step);
+    const step = b.step("run", "");
+    step.dependOn(&run.step);
 }
