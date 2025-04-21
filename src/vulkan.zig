@@ -1000,13 +1000,30 @@ fn init_global() void {
     start_time = std.time.nanoTimestamp();
 }
 
+fn rotateZ(angle: f32) zmath.Mat {
+    const s = std.math.sin(angle);
+    const c = std.math.cos(angle);
+
+    const m00 = c;
+    const m01 = s;
+    const m10 = -s;
+    const m11 = c;
+
+    return .{
+        zmath.f32x4(m00, m01, 0.0, 0.0),
+        zmath.f32x4(m10, m11, 0.0, 0.0),
+        zmath.f32x4(0.0, 0.0, 1.0, 0.0),
+        zmath.f32x4(0.0, 0.0, 0.0, 1.0),
+    };
+}
+
 fn updateUniformBuffer(self: Self, currentImage: u32) !void {
     const current_time = std.time.nanoTimestamp();
     const time: f64 = @floatFromInt(current_time - start_time);
     const t: f64 = time / std.time.ns_per_s;
     const angle: f32 = @floatCast(std.math.pi * 0.5 * t);
 
-    const model: zmath.Mat = zmath.rotationZ(angle);
+    const model: zmath.Mat = rotateZ(angle);
 
     const width: f32 = @floatFromInt(self.swapChainExtent.width);
     const height: f32 = @floatFromInt(self.swapChainExtent.height);

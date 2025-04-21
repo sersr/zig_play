@@ -88,22 +88,48 @@ pub fn build(b: *std.Build) void {
     // ... and pass it as a module to your executable's build command
     exe.root_module.addImport("vulkan", vulkan_zig);
 
-    const sdk = std.process.getEnvVarOwned(std.heap.page_allocator, "VULKAN_SDK") catch return;
-    defer std.heap.page_allocator.free(sdk);
-    const vulkan_sdk_path = std.fmt.allocPrint(std.heap.page_allocator, "{s}{s}include", .{ sdk, std.fs.path.sep_str }) catch return;
-    defer std.heap.page_allocator.free(vulkan_sdk_path);
-    const vulkan_sdk_lib_path = std.fmt.allocPrint(std.heap.page_allocator, "{s}{s}Lib", .{ sdk, std.fs.path.sep_str }) catch return;
-    defer std.heap.page_allocator.free(vulkan_sdk_lib_path);
+    const sdk = std.process.getEnvVarOwned(b.allocator, "VULKAN_SDK") catch return;
+    const vulkan_sdk_path = std.fmt.allocPrint(b.allocator, "{s}{s}include", .{ sdk, std.fs.path.sep_str }) catch return;
+
+    const vulkan_sdk_lib_path = std.fmt.allocPrint(b.allocator, "{s}{s}Lib", .{ sdk, std.fs.path.sep_str }) catch return;
     std.log.info("vukan sdk path: {s}", .{vulkan_sdk_path});
 
-    exe.addLibraryPath(.{ .cwd_relative = "C:\\Users\\aote\\scoop\\apps\\glfw\\current\\lib-static-ucrt" });
+    switch (builtin.target.os.tag) {
+        .windows => {
+            const glfw_lib = b.dependency("glfw_lib_win", .{});
+            const glfw_lib_root = glfw_lib.path("lib-static-ucrt");
+            const glfw_lib_path = glfw_lib_root.path(b, "glfw3.dll");
+
+            const file = b.addInstallFileWithDir(glfw_lib_path, .bin, "glfw3.dll");
+            b.getInstallStep().dependOn(&file.step);
+            exe.addLibraryPath(glfw_lib_root);
+        },
+        .macos => {
+            const glfw_lib = b.dependency("glfw_lib_mac", .{});
+            const lib_path = switch (builtin.cpu.arch) {
+                .aarch64 => "lib-arm64",
+                .x86_64 => "lib-x86_64",
+                else => "lib-universal",
+            };
+
+            const glfw_lib_root = glfw_lib.path(lib_path);
+            // const glfw_lib_path = glfw_lib_root.path(b, "glfw3.dyb");
+
+            // const file = b.addInstallFileWithDir(glfw_lib_path, .bin, "glfw3.dll");
+            // b.getInstallStep().dependOn(&file.step);
+            exe.addLibraryPath(glfw_lib_root);
+        },
+        else => {},
+    }
+
+    // exe.addLibraryPath(.{ .cwd_relative = "C:\\Users\\aote\\scoop\\apps\\glfw\\current\\lib-static-ucrt" });
     exe.addLibraryPath(.{ .cwd_relative = vulkan_sdk_lib_path });
     exe.addIncludePath(.{ .cwd_relative = vulkan_sdk_path });
-    exe.addIncludePath(.{ .cwd_relative = "C:\\Users\\aote\\scoop\\apps\\glfw\\current\\include" });
     exe.linkSystemLibrary("glfw3");
     // vulkan
-    exe.linkSystemLibrary("vulkan-1");
-    exe.linkLibCpp();
+    // exe.linkSystemLibrary("vulkan-1");
+
+    exe.linkLibC();
 
     const zig_glm = b.dependency("zig_glm", .{});
     const zlm = b.addModule("zlm", .{
