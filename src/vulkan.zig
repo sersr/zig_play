@@ -295,6 +295,8 @@ fn createInstance(self: *Self) !void {
     var arr = try arrType.initCapacity(allocator, count);
     defer arr.deinit();
 
+    // fix macos error
+    try arr.append(vk.extensions.khr_portability_enumeration.name);
     for (exts[0..count]) |ext| {
         try arr.append(ext);
     }
