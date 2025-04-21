@@ -286,7 +286,9 @@ fn createInstance(self: *Self) !void {
         .p_engine_name = "no engine",
     };
 
-    var createInfo: vk.InstanceCreateInfo = .{ .p_application_info = &app_info };
+    var createInfo: vk.InstanceCreateInfo = .{ .p_application_info = &app_info, .flags = .{
+        .enumerate_portability_bit_khr = true,
+    } };
     var count: u32 = undefined;
     const exts = glfw.getRequiredInstanceExtensions(&count) orelse &[0][*:0]const u8{};
     const arrType = std.ArrayList([*:0]const u8);
