@@ -99,6 +99,19 @@ pub fn build(b: *std.Build) void {
     const zmath = b.dependency("zmath", .{}).module("root");
     exe.root_module.addImport("zmath", zmath);
 
+    const zstbi = b.dependency("zstbi", .{}).module("root");
+    exe.root_module.addImport("stbi", zstbi);
+    const stb_c = b.dependency("stb", .{}).path("");
+    exe.root_module.addIncludePath(stb_c);
+
+    const tinyobjloader = b.dependency("tinyobjloader", .{}).path("");
+
+    exe.root_module.addIncludePath(tinyobjloader);
+    exe.addCSourceFile(.{
+        .file = b.path("src/tiny_obj_loader.c"),
+        .language = .c,
+    });
+
     b.installArtifact(exe);
     const run = b.addRunArtifact(exe);
 

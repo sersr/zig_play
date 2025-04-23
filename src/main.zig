@@ -51,6 +51,6 @@ fn glfwMain() !void {
     std.debug.print("glfw init\n", .{});
 
     var vp = try v.init(800, 600);
-    defer vp.deinit();
+    // defer vp.deinit();
     try vp.run();
 }

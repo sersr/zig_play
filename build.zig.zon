@@ -68,6 +68,18 @@
             .url = "git+https://github.com/zig-gamedev/zmath#ccf7297ef6c01e21b2d51ad81b5b6ce929e86a00",
             .hash = "zmath-0.11.0-dev-wjwivZY1AwDO7yxNmZ5HWoU03f9mFBet8LN9-oYc3i29",
         },
+        .zstbi = .{
+            .url = "git+https://github.com/zig-gamedev/zstbi#094c4bba5cdbec167d3f6aaa98cccccd5c99145f",
+            .hash = "zstbi-0.11.0-dev-L0Ea_-eVBwCl8RYA98PhLDw3Fhw5k7FJOHSMDKWDOvqx",
+        },
+        .stb = .{
+            .url = "git+https://github.com/nothings/stb.git#f0569113c93ad095470c54bf34a17b36646bbbb5",
+            .hash = "N-V-__8AAJopTgBuYbPPno6GEtqFAeIhKHyhTJcJ-Vp2FpHj",
+        },
+        .tinyobjloader = .{
+            .url = "git+https://github.com/syoyo/tinyobjloader-c#00bad0305c0a5b42c21c9bbf41dd3ac52e5c6295",
+            .hash = "N-V-__8AAEyaBQBb0sQ321LoA8kpiwip7OlJhIvgefwvjJKx",
+        },
     },
     .paths = .{
         "build.zig",
