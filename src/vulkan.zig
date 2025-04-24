@@ -163,6 +163,13 @@ pub fn deinit(self: Self) void {
     }
 
     self.device_instance.destroyDescriptorPool(self.descriptorPool, null);
+
+    self.device_instance.destroySampler(self.texture_sampler, null);
+    self.device_instance.destroyImageView(self.texture_image_view, null);
+
+    self.device_instance.destroyImage(self.texture_image, null);
+    self.device_instance.freeMemory(self.texture_image_memory, null);
+
     self.device_instance.destroyDescriptorSetLayout(self.descriptorSetLayout, null);
 
     self.device_instance.destroyBuffer(self.indexBuffer, null);
@@ -935,9 +942,8 @@ fn createTextureImage(self: *Self) !void {
     // 映射内存并拷贝数据
     const data = try self.device_instance.mapMemory(staging_memory, 0, image_size, .{});
     @memcpy(@as([*]u8, @ptrCast(data))[0..image_size], @as([*]const u8, @ptrCast(pixels))[0..image_size]);
-    print("....sss {any}", .{data.?});
     self.device_instance.unmapMemory(staging_memory);
-    print("....sss {any}", .{data.?});
+
     // 创建设备本地图像
     try self.createImage(
         @intCast(tex_width),
