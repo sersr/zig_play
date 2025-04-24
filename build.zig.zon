@@ -80,6 +80,10 @@
             .url = "git+https://github.com/syoyo/tinyobjloader-c#00bad0305c0a5b42c21c9bbf41dd3ac52e5c6295",
             .hash = "N-V-__8AAEyaBQBb0sQ321LoA8kpiwip7OlJhIvgefwvjJKx",
         },
+        .zmesh = .{
+            .url = "git+https://github.com/zig-gamedev/zmesh#f8f528128704ae879a16ddb0a3470c5e0a144a20",
+            .hash = "zmesh-0.11.0-dev-oO3A5gx7CgCBPHsGeuNzwzXAyEvs57u39AD5EUZTScli",
+        },
     },
     .paths = .{
         "build.zig",

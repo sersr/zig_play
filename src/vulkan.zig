@@ -4,6 +4,7 @@ const glfw = @import("zglfw");
 const vk = @import("vulkan");
 const zmath = @import("zmath");
 const stbi = @import("stbi");
+const Mesh = @import("mesh.zig");
 
 const stb = @cImport({
     @cInclude("stb_image.h");
@@ -25,6 +26,8 @@ const Self = @This();
 
 window: *glfw.Window,
 vkb: vk.BaseWrapper,
+mesh: Mesh,
+
 instance: vk.InstanceProxy = undefined,
 // hide
 _vk_inst_wrapper: vk.InstanceWrapper = undefined,
@@ -76,9 +79,6 @@ texture_image_memory: vk.DeviceMemory = undefined,
 texture_image_view: vk.ImageView = undefined,
 texture_sampler: vk.Sampler = undefined,
 
-vertices: VertexArrType = .init(allocator),
-indices: IndiceArrType = .init(allocator),
-
 vertexBuffer: vk.Buffer = undefined,
 vertexBufferMemory: vk.DeviceMemory = undefined,
 indexBuffer: vk.Buffer = undefined,
@@ -112,9 +112,6 @@ const VKDeviceMArrType = std.ArrayList(vk.DeviceMemory);
 const VKBufferMapped = std.ArrayList(*anyopaque);
 const VKDescSetArrType = std.ArrayList(vk.DescriptorSet);
 
-const VertexArrType = std.ArrayList(Vertex);
-const IndiceArrType = std.ArrayList(u32);
-
 var init_once = std.once(init_global);
 
 fn surface_enum(self: Self) vk.SurfaceKHR {
@@ -129,13 +126,18 @@ pub fn init(width: i32, height: i32) !Self {
 
     const window = try glfw.createWindow(width, height, "hello world", null, null);
     const vkb = vk.BaseWrapper.load(glfwGetInstanceProcAddress);
-    return .{ .window = window, .vkb = vkb };
+    return .{
+        .window = window,
+        .vkb = vkb,
+        .mesh = .init(allocator),
+    };
 }
 
 fn framebuferResizeCallback(window: ?*glfw.Window, width: c_int, height: c_int) callconv(.c) void {
     _ = width;
     _ = height;
-    const v: usize = @intFromPtr(window.?);
+    const p = glfw.getWindowUserPointer(window);
+    const v: usize = @intFromPtr(p.?);
     const app: *Self = @ptrFromInt(v);
     app.framebufferResize = true;
 }
@@ -519,6 +521,7 @@ fn createSwapChain(self: *Self) !void {
 
     self.swaiChainImageFormat = surfaceFormat.format;
     self.swapChainExtent = extent;
+    print("extent: {any}", .{extent});
 }
 
 fn createImageViews(self: *Self) !void {
@@ -680,8 +683,8 @@ fn createGraphicsPipeline(self: *Self) !void {
         fragShaderStageInfo,
     };
 
-    const bindingDesc = Vertex.getBindingDescription();
-    const attributeDesc = Vertex.getAttributeDescriptions();
+    const bindingDesc = Mesh.getBindingDescription();
+    const attributeDesc = Mesh.getAttributeDescriptions();
     const vertexInputInfo: vk.PipelineVertexInputStateCreateInfo = .{
         .vertex_binding_description_count = 1,
         .vertex_attribute_description_count = @intCast(attributeDesc.len),
@@ -799,8 +802,12 @@ fn createGraphicsPipeline(self: *Self) !void {
 fn createFramebuffers(self: *Self) !void {
     try self.swapChainFramebuffers.resize(self.swapchainImageViews.items.len);
 
-    for (self.swapchainImageViews.items, self.swapChainFramebuffers.items) |*item, *buf| {
-        const attachments = [_]vk.ImageView{ self.color_image_view, self.depth_image_view, item.* };
+    for (self.swapchainImageViews.items, self.swapChainFramebuffers.items) |item, *buf| {
+        const attachments = [_]vk.ImageView{
+            self.color_image_view,
+            self.depth_image_view,
+            item,
+        };
         const framebufferInfo: vk.FramebufferCreateInfo = .{
             .render_pass = self.renderPass,
             .attachment_count = attachments.len,
@@ -928,8 +935,9 @@ fn createTextureImage(self: *Self) !void {
     // 映射内存并拷贝数据
     const data = try self.device_instance.mapMemory(staging_memory, 0, image_size, .{});
     @memcpy(@as([*]u8, @ptrCast(data))[0..image_size], @as([*]const u8, @ptrCast(pixels))[0..image_size]);
+    print("....sss {any}", .{data.?});
     self.device_instance.unmapMemory(staging_memory);
-
+    print("....sss {any}", .{data.?});
     // 创建设备本地图像
     try self.createImage(
         @intCast(tex_width),
@@ -1237,82 +1245,14 @@ fn copyBufferToImage(self: *Self, buffer: vk.Buffer, image: vk.Image, width: u32
 const MODEL_PATH = "resources/viking_room.obj";
 const TEXTURE_PATH = "resources/viking_room.png";
 
-fn loadObj(
-    ctx: ?*anyopaque,
-    filename: [*c]const u8,
-    is_mtl: c_int,
-    obj_filename: [*c]const u8,
-    buffer: [*c][*c]u8,
-    len: [*c]usize,
-) callconv(.c) void {
-    _ = ctx;
-    _ = is_mtl;
-    _ = obj_filename;
-    const filename_size = std.mem.len(filename);
-
-    const file = std.fs.cwd().openFile(filename[0..filename_size], .{}) catch return;
-    const meta = file.metadata() catch return;
-    const size = meta.size();
-    const al = std.heap.c_allocator;
-    const bytes = file.readToEndAlloc(al, size) catch return;
-    buffer.* = bytes.ptr;
-    len.* = bytes.len;
-}
-// 模型加载函数
 fn loadModel(self: *Self) !void {
-    var attrib: tinyobj.tinyobj_attrib_t = undefined;
-    var shapes: [*]tinyobj.tinyobj_shape_t = undefined;
-    var materials: [*]tinyobj.tinyobj_material_t = undefined;
-    var shapes_count: usize = 0;
-    var materials_count: usize = 0;
-
-    if (tinyobj.tinyobj_parse_obj(
-        @ptrCast(&attrib),
-        @ptrCast(&shapes),
-        @ptrCast(&shapes_count),
-        @ptrCast(&materials),
-        @ptrCast(&materials_count),
-        @ptrCast(MODEL_PATH),
-        loadObj,
-        null,
-        tinyobj.TINYOBJ_FLAG_TRIANGULATE,
-    ) != 0) {
-        return error.ModelLoadFailed;
-    }
-
-    var unique_vertices = std.HashMap(Vertex, u32, VertexContext, std.hash_map.default_max_load_percentage).initContext(allocator, .{});
-    defer unique_vertices.deinit();
-
-    const face_verts = attrib.faces[0..attrib.num_faces];
-
-    for (face_verts) |d| {
-        const vert_index: usize = @intCast(d.v_idx);
-        const tex_index: usize = @intCast(d.vt_idx);
-        const vertex = Vertex{
-            .pos = .{
-                attrib.vertices[3 * vert_index],
-                attrib.vertices[3 * vert_index + 1],
-                attrib.vertices[3 * vert_index + 2],
-            },
-            .texCoord = .{
-                attrib.texcoords[2 * tex_index],
-                1.0 - attrib.texcoords[2 * tex_index + 1], // Y轴翻转
-            },
-            .color = .{ 1.0, 1.0, 1.0 },
-        };
-
-        const entry = try unique_vertices.getOrPut(vertex);
-        if (!entry.found_existing) {
-            entry.value_ptr.* = @intCast(self.vertices.items.len);
-            try self.vertices.append(vertex);
-        }
-        try self.indices.append(entry.value_ptr.*);
-    }
+    // try self.mesh.loadModel(@ptrCast(MODEL_PATH));
+    try self.mesh.loadModelGltf("resources/cube.gltf");
 }
 // end image
 
 fn createVertexBuffer(self: *Self) !void {
-    const bufferSize: vk.DeviceSize = @sizeOf(@TypeOf(self.vertices.items[0])) * self.vertices.items.len;
+    const bufferSize: vk.DeviceSize = self.mesh.getVetexByteSize();
 
     var stagingBuffer: vk.Buffer = undefined;
     var stagingBufferMemory: vk.DeviceMemory = undefined;
@@ -1334,7 +1274,7 @@ fn createVertexBuffer(self: *Self) !void {
         @panic("failed to map memory!");
     }
     const dst_p: [*]u8 = @ptrCast(data.?);
-    const src: []const u8 = @ptrCast(self.vertices.items);
+    const src: []const u8 = @ptrCast(self.mesh.vertices.items);
     @memcpy(dst_p, src);
 
     self.device_instance.unmapMemory(stagingBufferMemory);
@@ -1357,7 +1297,7 @@ fn createVertexBuffer(self: *Self) !void {
 }
 
 fn createIndexBuffer(self: *Self) !void {
-    const bufferSize: vk.DeviceSize = @sizeOf(@TypeOf(self.indices.items[0])) * self.indices.items.len;
+    const bufferSize: vk.DeviceSize = self.mesh.getIndexByteSize();
 
     var stagingBuffer: vk.Buffer = undefined;
     var stagingBufferMemory: vk.DeviceMemory = undefined;
@@ -1380,7 +1320,7 @@ fn createIndexBuffer(self: *Self) !void {
     }
 
     const dst_p: [*]u8 = @ptrCast(data.?);
-    const src: []const u8 = @ptrCast(self.indices.items);
+    const src: []const u8 = @ptrCast(self.mesh.indices.items);
     @memcpy(dst_p, src);
 
     self.device_instance.unmapMemory(stagingBufferMemory);
@@ -1576,7 +1516,7 @@ fn recordCommandBuffer(self: *Self, commandBuffer: vk.CommandBuffer, imageIndex:
     );
     self.device_instance.cmdDrawIndexed(
         commandBuffer,
-        @intCast(self.indices.items.len),
+        @intCast(self.mesh.indices.items.len),
         1,
         0,
         0,
@@ -1658,9 +1598,9 @@ fn updateUniformBuffer(self: Self, currentImage: u32) !void {
     var ubo: UniformBufferObject = .{
         .model = model,
         .view = zmath.lookAtRh(
-            .{ 2.0, 2.0, 2.0, 1.0 },
+            .{ 3.0, 3.0, -3.0, 1.0 },
             .{ 0.0, 0.0, 0.0, 0.0 },
-            .{ 0.0, 0.0, -1.0, 0.0 },
+            .{ 0.0, 0.0, 1.0, 0.0 },
         ),
         .proj = zmath.perspectiveFovRh(
             std.math.pi * 0.25,
@@ -1806,13 +1746,16 @@ fn drawFrame(self: *Self) !void {
 
     switch (result) {
         .error_out_of_date_khr, .suboptimal_khr => {
-            if (self.framebufferResize) {
-                self.framebufferResize = false;
-                try self.recreateSwapChain();
-            }
+            self.framebufferResize = false;
+            try self.recreateSwapChain();
         },
         .success => {},
         else => @panic("failed to present swap chain image!"),
+    }
+
+    if (self.framebufferResize) {
+        self.framebufferResize = false;
+        try self.recreateSwapChain();
     }
 
     self.currentFrame = (self.currentFrame + 1) % max_frames_in_flights;
@@ -1833,10 +1776,20 @@ fn recreateSwapChain(self: *Self) !void {
 
     try self.createSwapChain();
     try self.createImageViews();
+    try self.createColorResources();
+    try self.createDepthResources();
     try self.createFramebuffers();
 }
 
 fn cleanupSwapChain(self: Self) void {
+    self.device_instance.destroyImageView(self.depth_image_view, null);
+    self.device_instance.destroyImage(self.depth_image, null);
+    self.device_instance.freeMemory(self.depth_image_memory, null);
+
+    self.device_instance.destroyImageView(self.color_image_view, null);
+    self.device_instance.destroyImage(self.color_image, null);
+    self.device_instance.freeMemory(self.color_image_memory, null);
+
     for (self.swapChainFramebuffers.items) |item| {
         self.device_instance.destroyFramebuffer(item, null);
     }
@@ -2075,77 +2028,6 @@ const UniformBufferObject = struct {
     model: zmath.Mat align(16),
     view: zmath.Mat align(16),
     proj: zmath.Mat align(16),
-};
-
-const VertexContext = struct {
-    pub fn hash(self: VertexContext, k: Vertex) u64 {
-        _ = self;
-        return k.hash();
-    }
-
-    pub fn eql(self: VertexContext, s: Vertex, other: Vertex) bool {
-        _ = self;
-        return s.eql(other);
-    }
-};
-const Vertex = struct {
-    pos: [3]f32,
-    color: [3]f32,
-    texCoord: [2]f32,
-
-    fn getBindingDescription() vk.VertexInputBindingDescription {
-        return .{
-            .binding = 0,
-            .stride = @sizeOf(Vertex),
-            .input_rate = .vertex,
-        };
-    }
-
-    fn getAttributeDescriptions() []const vk.VertexInputAttributeDescription {
-        return &.{
-            .{
-                .binding = 0,
-                .location = 0,
-                .format = .r32g32b32_sfloat,
-                .offset = @offsetOf(Vertex, "pos"),
-            },
-            .{
-                .binding = 0,
-                .location = 1,
-                .format = .r32g32b32_sfloat,
-                .offset = @offsetOf(Vertex, "color"),
-            },
-            .{
-                .binding = 0,
-                .location = 2,
-                .format = .r32g32_sfloat,
-                .offset = @offsetOf(Vertex, "texCoord"),
-            },
-        };
-    }
-
-    fn hash(self: Vertex) u64 {
-        var hasher = std.hash.Wyhash.init(1000);
-        for (self.pos) |p| {
-            const p1: u32 = @bitCast(p);
-            hasher.update(std.mem.asBytes(&p1));
-        }
-        for (self.texCoord) |t| {
-            const t1: u32 = @bitCast(t);
-            hasher.update(std.mem.asBytes(&t1));
-        }
-        for (self.color) |c| {
-            const c1: u32 = @bitCast(c);
-            hasher.update(std.mem.asBytes(&c1));
-        }
-        return hasher.final();
-    }
-
-    fn eql(self: Vertex, other: Vertex) bool {
-        return std.mem.eql(f32, &self.pos, &other.pos) and
-            std.mem.eql(f32, &self.texCoord, &other.texCoord) and
-            std.mem.eql(f32, &self.color, &other.color);
-    }
 };
 
 pub fn beginSingleTimeCommands(self: *Self) !vk.CommandBuffer {

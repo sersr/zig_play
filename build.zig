@@ -112,6 +112,11 @@ pub fn build(b: *std.Build) void {
         .language = .c,
     });
 
+    const zmesh = b.dependency("zmesh", .{});
+    const zm_module = zmesh.module("root");
+    exe.root_module.addImport("zmesh", zm_module);
+    exe.linkLibrary(zmesh.artifact("zmesh"));
+
     b.installArtifact(exe);
     const run = b.addRunArtifact(exe);
 
